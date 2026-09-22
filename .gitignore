@@ -1,0 +1,69 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+wheels/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Test / type-check caches
+.pytest_cache/
+.mypy_cache/
+.pyright/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Default audit output (written next to the working directory)
+truth_types.jsonl
+truth_types_audit.jsonl
+*.jsonl
+
+# Editors / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+*.swp
+*~
+
+# Build tooling
+.uv/
+tox.ini.bak
+
+# PEP 517/518 build output and release tooling
+dist/
+build/
+sdist/
+*.egg
+*.egg-info/
+*.whl
+*.tar.gz
+pip-wheel-metadata/
+share/python-wheels/
+MANIFEST
+
+# Environments and caches (extended)
+.tox/
+.nox/
+.hypothesis/
+*.sage.py
+.dmypy.json
+dmypy.json
+site/
+smoke/
+
+# Local scratch files from the examples (the library writes JSONL next to the cwd)
+./truth_types.jsonl
+./truth_types_audit.jsonl
+

@@ -1,0 +1,71 @@
+name: Feature request
+description: Propose a new rule, API surface, or integration. Read the two acceptance criteria first.
+title: "[feature] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This library is deliberately small, so the bar for additions is stated up front:
+
+        1. **A rule belongs here only if it can be enforced in code** and fail a call. A convention
+           that cannot fail is a checklist item for your pipeline, not a library feature.
+        2. **The compatibility promise is binding** ([SPEC §7.8](https://github.com/Jackxuzhenjie/truth-types/blob/main/SPEC.md)):
+           the exported names and the four truth-type strings are the wire format of the records and
+           audit files. Additions that widen the surface should start as a discussion against the
+           specification — [SPEC.md](https://github.com/Jackxuzhenjie/truth-types/blob/main/SPEC.md)
+           is normative and is amended before the code.
+
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Kind of request
+      options:
+        - New machine-checkable rule (must fail a call)
+        - Public API / field addition
+        - Integration (MCP server, exporter, log plumbing)
+        - Documentation or specification
+        - Distribution / packaging
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What goes wrong today in a real pipeline? Name the failure mode, not the desired API.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed change
+      description: Sketch the behaviour. If it is a rule, give the condition that must be rejected and the exact outcome the caller sees.
+    validations:
+      required: true
+
+  - type: textarea
+    id: enforcement
+    attributes:
+      label: How would it be enforced and tested?
+      description: Which code path would reject a violation, and what would the test assert (the outcome, not the message text)?
+    validations:
+      required: true
+
+  - type: textarea
+    id: compat
+    attributes:
+      label: Compatibility impact
+      description: Does it change an exported name, a record field, or an audit field? Would existing audit files still load?
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I read "What it is not" and "Known limitations" in the README, and this is not one of the documented non-goals of v0.
+          required: true
+        - label: This does not require relaxing a rule, changing the truth-type strings, or making the audit log optional.
+          required: true

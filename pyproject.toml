@@ -1,0 +1,64 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "truth-types"
+version = "0.1.0"
+description = "Epistemic truth types (derived/declared/canonical/opaque) with machine-enforced promotion rules and an append-only audit log for agent knowledge pipelines."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [{ name = "Jack Xu" }]
+keywords = [
+    "ai-agents",
+    "epistemics",
+    "provenance",
+    "truth-types",
+    "knowledge-pipeline",
+    "audit",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Typing :: Typed",
+]
+# No runtime dependencies: standard library only.
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0", "pyright>=1.1.350"]
+release = ["build>=1.2", "twine>=5.0"]
+
+[project.urls]
+Homepage = "https://github.com/Jackxuzhenjie/truth-types"
+Repository = "https://github.com/Jackxuzhenjie/truth-types"
+Issues = "https://github.com/Jackxuzhenjie/truth-types/issues"
+Changelog = "https://github.com/Jackxuzhenjie/truth-types/blob/main/CHANGELOG.md"
+Specification = "https://github.com/Jackxuzhenjie/truth-types/blob/main/SPEC.md"
+
+[tool.setuptools]
+packages = ["truth_types"]
+
+[tool.setuptools.package-data]
+truth_types = ["py.typed"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q"
+
+[tool.pyright]
+include = ["truth_types", "tests"]
+pythonVersion = "3.10"
+typeCheckingMode = "basic"

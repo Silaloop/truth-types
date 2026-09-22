@@ -1,0 +1,96 @@
+name: Bug report
+description: Report a defect — a rule that does not fire, a state the lattice should not allow, or a wrong audit line.
+title: "[bug] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. Two notes before you start:
+
+        - **Security issues** (rule bypasses, audit forgery, unsafe path handling) do **not** belong
+          here — see [SECURITY.md](https://github.com/Jackxuzhenjie/truth-types/blob/main/SECURITY.md).
+        - `reason` / `detail` **message text is not part of the compatibility contract**: branch on
+          the structured fields (`ok`, `allowed`, `action`, `from_type`, `to_type`). A wrong *wording*
+          is a documentation bug; a wrong *structured field* is a bug bug.
+
+  - type: input
+    id: version
+    attributes:
+      label: truth-types version
+      description: Output of `python -c "import truth_types; print(truth_types.__version__)"`.
+      placeholder: "0.1.0"
+    validations:
+      required: true
+
+  - type: input
+    id: python
+    attributes:
+      label: Python version and platform
+      placeholder: "3.11.9 on Ubuntu 24.04"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Which part of the library?
+      options:
+        - add() — creation rules (weakest link, AI coercion, duplicates, citations)
+        - promote() — promotion rules (humans only, no skipping, no downgrade, opaque)
+        - check_on_screen() — publication gate
+        - audit log — entries, blocked_promotions(), JSONL format
+        - persistence — records file, reload, log directory resolution
+        - packaging / installation / typing (py.typed)
+        - documentation (README, SPEC) — note that spec changes start as a discussion
+        - other
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you observed, and which rule or documented behaviour it contradicts (README / SPEC section if you have one).
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      description: A self-contained snippet, as short as you can make it. If a rule is involved, name the rule number (1–6).
+      render: python
+      placeholder: |
+        from truth_types import ActorKind, EpistemicRecord, TruthType, TruthTypeRegistry
+
+        reg = TruthTypeRegistry(log_dir="/tmp/tt-repro")
+        print(reg.add(EpistemicRecord(eid="x", truth_type=TruthType.DERIVED, actor_kind=ActorKind.AI)))
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+      description: What you expected instead, and why.
+    validations:
+      required: true
+
+  - type: textarea
+    id: audit
+    attributes:
+      label: Audit lines (if any)
+      description: The relevant lines of `truth_types_audit.jsonl`. Remove anything private first.
+      render: json
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: This is not a request to weaken a rule — the six rules and the isolation guarantee are the point of the library, not a configurable policy.
+          required: true
+        - label: I ran the smallest reproduction against the current `main`.
+          required: true

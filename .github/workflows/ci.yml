@@ -1,0 +1,90 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    name: "tests · Python ${{ matrix.python-version }}"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: "Install the package (runtime dependencies: none)"
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .
+
+      - name: Check the installed metadata
+        run: |
+          python - <<'PY'
+          import importlib.metadata as md
+
+          import truth_types
+
+          requires = md.requires("truth-types") or []
+          runtime = [r for r in requires if "extra ==" not in r]
+          assert not runtime, f"runtime dependencies must stay empty, got: {runtime}"
+
+          installed = md.version("truth-types")
+          assert truth_types.__version__ == installed, (truth_types.__version__, installed)
+          print(f"truth-types {installed} - zero runtime dependencies, __version__ in sync")
+          PY
+
+      - name: Install the test runner
+        run: python -m pip install "pytest>=7"
+
+      - name: Run the test suite
+        run: python -m pytest -q
+
+      - name: Run the examples end to end
+        run: |
+          python examples/01_quickstart.py
+          python examples/02_blocked_promotions.py
+          python examples/03_audit_query.py
+
+  package:
+    name: "package · build · twine check · wheel install"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+
+      - name: Build sdist + wheel and check the distribution metadata
+        run: |
+          python -m pip install --upgrade build twine
+          python -m build
+          python -m twine check dist/*
+
+      - name: Install the wheel into a clean environment
+        run: |
+          python -m venv smoke
+          smoke/bin/python -m pip install --upgrade pip
+          smoke/bin/python -m pip install dist/*.whl
+          smoke/bin/python -c "import truth_types, importlib.metadata as md; print('import ok:', truth_types.__version__, md.version('truth-types'))"
+          smoke/bin/python examples/01_quickstart.py

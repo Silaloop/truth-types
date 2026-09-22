@@ -1,0 +1,18 @@
+# Files shipped in the source distribution (sdist) in addition to the package itself.
+# The specification, the docs and the runnable examples are part of the deliverable: a source
+# install should be able to read the normative rules and run the examples offline, with no network.
+
+include LICENSE
+include README.md
+include README.zh-CN.md
+include CHANGELOG.md
+include CONTRIBUTING.md
+include CODE_OF_CONDUCT.md
+include DCO.md
+include SECURITY.md
+include SPEC.md
+include PULL_REQUEST_TEMPLATE.md
+include pyproject.toml
+
+recursive-include tests *.py
+recursive-include examples *.py
