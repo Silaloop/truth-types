@@ -88,6 +88,11 @@ MESSAGES: dict[str, str] = {
     "add_ok": "created",
     "add_created": "created {truth_type} (actor={actor})",
     # --- TruthTypeRegistry.promote ---
+    # The capability check runs before every other condition (SPEC.md §4.7).
+    "promote_disabled": (
+        "promotion is disabled on this registry (read-only promote handle); "
+        "construct a promoting registry in the human review surface"
+    ),
     "promote_missing_eid": "eid not found",
     "promote_audit_detail": "{current}→{target} by {actor}: {reason}",
     "promote_note_separator": " | ",
@@ -258,15 +263,40 @@ class TruthTypeRegistry:
       * every attempt — accepted or rejected — is written to the audit log, which
         is what makes blocked promotions reviewable
     - check_on_screen(): publication rule 6
+
+    ``allow_promote`` is a construction-time **capability handle** (SPEC.md §4.7):
+    with ``allow_promote=False`` the registry is a *read-only promote handle* —
+    every ``promote()`` call is refused (and still audited), while ``add()``,
+    ``get()``, ``check_on_screen()`` and the audit queries behave as usual.
+    Agent processes SHOULD be handed a read-only handle; a promote-capable
+    registry belongs to the human review surface.
     """
 
-    def __init__(self, log_dir: Optional[Path] = None) -> None:
+    def __init__(
+        self,
+        log_dir: Optional[Path] = None,
+        allow_promote: bool = True,
+    ) -> None:
+        """Open (or create) the registry's directory and load existing records.
+
+        ``allow_promote`` is set at construction and exposed as a read-only
+        property: ``False`` yields a read-only promote handle (SPEC.md §4.7) for
+        processes that may add and read records but must not promote. Passing a
+        promoting registry to agent code is a deployment choice; passing a
+        read-only one makes the safe path the default path.
+        """
         self.dir = Path(log_dir) if log_dir is not None else default_log_dir()
         self.dir.mkdir(parents=True, exist_ok=True)
         self.records_path = self.dir / RECORDS_FILENAME
         self.audit_path = self.dir / DEFAULT_AUDIT_FILENAME
+        self._allow_promote = bool(allow_promote)
         self._records: dict[str, EpistemicRecord] = {}
         self._load()
+
+    @property
+    def allow_promote(self) -> bool:
+        """Whether this handle may promote. Read-only: a handle is armed at construction."""
+        return self._allow_promote
 
     # ---------- internal ----------
 
@@ -358,8 +388,8 @@ class TruthTypeRegistry:
         )
         return {"ok": True, "reason": MESSAGES["add_ok"], "record": rec.to_dict()}
 
-    def _audit_call(self, action: str, eid: str, ok: bool, detail: str) -> dict:
-        self._audit(action, eid, ok, detail)
+    def _audit_call(self, action: str, eid: str, ok: bool, detail: str, **extra) -> dict:
+        self._audit(action, eid, ok, detail, **extra)
         return {"ok": ok, "reason": detail}
 
     def promote(
@@ -369,7 +399,19 @@ class TruthTypeRegistry:
         actor: ActorKind,
         note: str = "",
     ) -> dict:
-        """Promote a record (machine-checked, fully audited). Returns {ok, reason}."""
+        """Promote a record (machine-checked, fully audited). Returns {ok, reason}.
+
+        On a read-only promote handle (``allow_promote=False``, SPEC.md §4.7) this
+        is a no-op refusal: nothing is promoted, the returned ``ok`` is ``False``
+        for every argument, and the attempt is still appended to the audit log —
+        a read-only handle is never invisible in the record of attempts.
+        """
+        if not self._allow_promote:
+            rec = self._records.get(eid)
+            extra: dict = {"to_type": target.value, "handle": "read-only"}
+            if rec is not None:
+                extra["from_type"] = rec.truth_type.value
+            return self._audit_call("promote", eid, False, MESSAGES["promote_disabled"], **extra)
         rec = self._records.get(eid)
         if rec is None:
             return self._audit_call("promote", eid, False, MESSAGES["promote_missing_eid"])

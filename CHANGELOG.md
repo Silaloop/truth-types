@@ -45,6 +45,13 @@ only, offline, no service to run.
 - Helpers and constants: `check_promotion()`, `weakest_link()`, `default_log_dir()`,
   `PROMOTION_EDGES`, `RECORDS_FILENAME`, `DEFAULT_AUDIT_FILENAME`, `AUDIT_PATH_ENV`, `MODE`, and the
   enums `VerificationStatus`, `GraduationStatus`, `ActorKind`.
+- **`allow_promote` — read-only promote handles.** `TruthTypeRegistry(log_dir=…, allow_promote=False)`
+  yields a handle that may `add()` and read but never promote: every `promote()` call returns
+  `{ok: False, reason: …}` whatever the arguments, and is still written to the audit log
+  (`handle="read-only"`) so no attempt goes unseen. Rationale: `actor_kind` is a self-declared claim,
+  so the smallest real narrowing is to take the *ability* to promote away from the handle the agent
+  process holds, leaving a promoting registry to the human review surface (SPEC.md §4.7). It
+  defaults to `True`, so existing callers are unchanged.
 - **`TRUTH_TYPES_AUDIT_PATH`** — environment override for the log directory (a directory, or a
   `*.jsonl` file whose parent directory is used).
 - **`truth_types.core.MESSAGES`** — the single English catalogue every `reason` / `detail` string
@@ -54,9 +61,10 @@ only, offline, no service to run.
   compatibility contract (§7.8), boundary behaviour (§4.6) and the convergence list (§9.3).
 - **Examples** — three runnable, dependency-free scripts: the full lifecycle, the rejection surface,
   and reading the audit log back with nothing but the standard library.
-- **Tests** — 20 offline tests covering the lattice, all six rules, the audit trail, persistence
-  across a reload, and the isolation scenario (AI output reaching `canonical` requires two human
-  promotions through the observable intermediate state).
+- **Tests** — 28 offline tests covering the lattice, all six rules, the audit trail, the read-only
+  promote handle (`allow_promote=False`), persistence across a reload, and the isolation scenario (AI
+  output reaching `canonical` requires two human promotions through the observable intermediate
+  state).
 - **Packaging** — PEP 517/518 build from `pyproject.toml` alone; `sdist` + `wheel`; Apache-2.0;
   `LICENSE`, `CHANGELOG.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md` (Contributor Covenant 2.1),
   `SECURITY.md`, DCO sign-off, issue and pull-request templates, and a GitHub Actions CI matrix over
@@ -72,11 +80,13 @@ only, offline, no service to run.
   identity) and is scoped accordingly in [SECURITY.md](SECURITY.md).
 
 ### Known limitations
-- `actor_kind` is an unauthenticated claim supplied by the caller; the audit log is append-only by
-  convention, not tamper-evident; there is no retraction; `add()` is not uniformly total (an `opaque`
-  parent raises `ValueError`); `verification` / `graduation` are stored but inert; `source_grade` is
-  specified but not implemented; timestamps are local with second resolution; files grow without
-  bound. The full list is in the README and in SPEC §4.6 and §9.1.
+- `actor_kind` is an unauthenticated claim supplied by the caller; a read-only promote handle
+  (`allow_promote=False`) removes the promotion path from one handle but is not a sandbox (§9.1.18);
+  the audit log is append-only by convention, not tamper-evident; there is no retraction; `add()` is
+  not uniformly total (an `opaque` parent raises `ValueError`); `verification` / `graduation` are
+  stored but inert; `source_grade` is specified but not implemented; timestamps are local with second
+  resolution; files grow without bound. The full list is in the README and in SPEC §4.6, §4.7 and
+  §9.1.
 
 [Unreleased]: https://github.com/Jackxuzhenjie/truth-types/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/Jackxuzhenjie/truth-types/releases/tag/v0.1.0

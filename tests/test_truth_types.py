@@ -12,6 +12,9 @@ Coverage:
   6. persistence: state and audit log survive a reload
   7. isolation scenario: AI output → single-step human promotion to canonical is
      rejected (the ≥2 human promotions guarantee)
+  8. read-only promote handles: `allow_promote=False` refuses every promotion
+     (arguments irrelevant), audits the refusal, and leaves add/read/screen and
+     the serialized record unchanged
 
 Runtime `reason` / `detail` strings are asserted against the English catalogue in
 `truth_types.MESSAGES` (message text is not part of the compatibility contract —
@@ -36,6 +39,11 @@ def _must(reg, eid):
     rec = reg.get(eid)
     assert rec is not None
     return rec
+
+
+def _ro_reg(tmp_path, name="tt-readonly"):
+    """A read-only promote handle: may add and read, must not promote."""
+    return tt.TruthTypeRegistry(log_dir=tmp_path / name, allow_promote=False)
 
 
 # ---------- 1. weakest_link ----------
@@ -213,3 +221,154 @@ def test_isolation_scenario(tmp_path):
     assert reg.promote("ai_out", tt.TruthType.DECLARED, tt.ActorKind.HUMAN)["ok"] is True
     assert reg.promote("ai_out", tt.TruthType.CANONICAL, tt.ActorKind.HUMAN)["ok"] is True
     assert _must(reg, "ai_out").truth_type == tt.TruthType.CANONICAL
+
+
+# ---------- 8. read-only promote handles (allow_promote=False) ----------
+
+def test_readonly_default_true_promotes(tmp_path):
+    """The default stays promote-capable: existing callers see no change."""
+    reg = tt.TruthTypeRegistry(log_dir=tmp_path / "tt")
+    assert reg.allow_promote is True
+
+    explicit = tt.TruthTypeRegistry(log_dir=tmp_path / "tt-explicit", allow_promote=True)
+    assert explicit.allow_promote is True
+    explicit.add(_rec("r1", tt.TruthType.DERIVED))
+    assert explicit.promote("r1", tt.TruthType.DECLARED, tt.ActorKind.HUMAN)["ok"] is True
+
+
+def test_readonly_handle_refuses_legal_promotion(tmp_path):
+    reg = _ro_reg(tmp_path)
+    assert reg.allow_promote is False
+    reg.add(_rec("r1", tt.TruthType.DERIVED))
+
+    # a promotion that the rules of Section 3 would accept is still refused
+    r = reg.promote("r1", tt.TruthType.DECLARED, tt.ActorKind.HUMAN, note="agent attempt")
+    assert r["ok"] is False
+    assert r["reason"] == (
+        "promotion is disabled on this registry (read-only promote handle); "
+        "construct a promoting registry in the human review surface"
+    )
+    assert set(r) == {"ok", "reason"}  # same decision-object shape as any refusal
+
+    rec = _must(reg, "r1")
+    assert rec.truth_type == tt.TruthType.DERIVED  # nothing was promoted
+    assert rec.attestation_ref == ""               # no stamp, no side effect
+    assert len(reg.blocked_promotions()) == 1
+
+
+def test_readonly_handle_attempt_is_audited(tmp_path):
+    """Every attempt leaves a trace, on every handle: the refusal is recorded."""
+    reg = _ro_reg(tmp_path)
+    reg.add(_rec("r1", tt.TruthType.DERIVED))
+    before = len(reg.audit_entries())
+
+    reg.promote("r1", tt.TruthType.DECLARED, tt.ActorKind.HUMAN, note="agent attempt")
+
+    entries = reg.audit_entries()
+    assert len(entries) == before + 1
+    last = entries[-1]
+    assert (last["action"], last["eid"], last["ok"]) == ("promote", "r1", False)
+    # structured fields: the attempted transition and the handle that refused
+    assert last["from_type"] == "derived"
+    assert last["to_type"] == "declared"
+    assert last["handle"] == "read-only"
+    assert "promotion is disabled" in last["detail"]
+
+    blocked = reg.blocked_promotions()
+    assert len(blocked) == 1
+    assert blocked[0]["ok"] is False
+    assert "read-only promote handle" in blocked[0]["detail"]
+
+
+def test_readonly_handle_leaves_add_and_reads_unchanged(tmp_path):
+    """Only the promotion capability narrows: creation, retrieval and the screen rule are untouched."""
+    reg = _ro_reg(tmp_path)
+    assert reg.add(_rec("p1", tt.TruthType.DECLARED))["ok"] is True
+    assert reg.add(_rec("c1", tt.TruthType.DECLARED, parents=["p1"]))["ok"] is True
+    assert reg.add(_rec("ai1", tt.TruthType.CANONICAL, actor=tt.ActorKind.AI))["ok"] is True
+    assert _must(reg, "ai1").truth_type == tt.TruthType.DERIVED  # rule 1 still coerces
+
+    # creation rules still refuse, with the same decision-object reasons
+    dup = reg.add(_rec("p1", tt.TruthType.DERIVED))
+    assert dup["ok"] is False and "already exists" in dup["reason"]
+    skip = reg.add(_rec("c2", tt.TruthType.DECLARED, parents=["ai1"]))
+    assert skip["ok"] is False and "weakest-link" in skip["reason"]
+    broken = reg.add(_rec("c3", tt.TruthType.DERIVED, parents=["nope"]))
+    assert broken["ok"] is False and "broken provenance chain" in broken["reason"]
+
+    assert _must(reg, "p1").eid == "p1"
+    assert reg.get("absent") is None
+    assert reg.check_on_screen("c1")["ok"] is True
+    assert reg.check_on_screen("p1")["ok"] is False  # declared but no parents
+
+
+def test_readonly_handle_switch_precedes_other_validation(tmp_path):
+    """The capability check runs first: the refusal is argument-independent."""
+    reg = _ro_reg(tmp_path)
+    reg.add(_rec("r1", tt.TruthType.DERIVED))
+
+    attempts = [
+        ("missing_eid", tt.TruthType.DECLARED, tt.ActorKind.HUMAN),   # unknown eid
+        ("r1", tt.TruthType.CANONICAL, tt.ActorKind.HUMAN),           # level skipping
+        ("r1", tt.TruthType.OPAQUE, tt.ActorKind.HUMAN),              # opaque isolation
+        ("r1", tt.TruthType.DERIVED, tt.ActorKind.AI),                # AI is never the blocker here
+    ]
+    for eid, target, actor in attempts:
+        r = reg.promote(eid, target, actor)
+        assert r["ok"] is False
+        assert "promotion is disabled" in r["reason"]
+
+    # every attempt is on the record, including the unknown-eid one
+    refused = reg.blocked_promotions()
+    assert len(refused) == len(attempts)
+    assert [e["eid"] for e in refused] == [a[0] for a in attempts]
+
+    # the unknown eid leaves no `from_type`: a read-only handle is no existence oracle
+    unknown = refused[0]
+    assert "from_type" not in unknown
+    assert unknown["to_type"] == "declared"
+    # a known eid does carry the transition it would have attempted
+    assert refused[1]["from_type"] == "derived"
+    assert refused[1]["to_type"] == "canonical"
+
+
+def test_readonly_handle_is_not_rearmable(tmp_path):
+    reg = _ro_reg(tmp_path)
+    with pytest.raises(AttributeError):
+        setattr(reg, "allow_promote", True)
+    assert reg.allow_promote is False
+    reg.add(_rec("r1", tt.TruthType.DERIVED))
+    assert reg.promote("r1", tt.TruthType.DECLARED, tt.ActorKind.HUMAN)["ok"] is False
+
+
+def test_readonly_and_promoting_handles_share_the_log(tmp_path):
+    """The deployment form: read-only handle for the agent, promoting handle for the review surface."""
+    log_dir = tmp_path / "shared"
+    agent = tt.TruthTypeRegistry(log_dir=log_dir, allow_promote=False)
+    agent.add(_rec("r1", tt.TruthType.DERIVED))
+    assert agent.promote("r1", tt.TruthType.DECLARED, tt.ActorKind.HUMAN)["ok"] is False
+
+    human = tt.TruthTypeRegistry(log_dir=log_dir)  # promoting handle, same directory
+    assert human.promote("r1", tt.TruthType.DECLARED, tt.ActorKind.HUMAN)["ok"] is True
+
+    reloaded = tt.TruthTypeRegistry(log_dir=log_dir)
+    assert _must(reloaded, "r1").truth_type == tt.TruthType.DECLARED
+    assert len(reloaded.audit_entries()) == 3          # add + refused promote + accepted promote
+    assert len(reloaded.blocked_promotions()) == 1
+
+
+def test_readonly_handle_serialization_unaffected(tmp_path):
+    """The handle is construction-time only: it never reaches the record or the wire format."""
+    ro = _ro_reg(tmp_path, name="ro")
+    rw = tt.TruthTypeRegistry(log_dir=tmp_path / "rw")
+    for reg in (ro, rw):
+        reg.add(_rec("r1", tt.TruthType.DERIVED, statement="identical", parents=()))
+
+    a = _must(ro, "r1").to_dict()
+    b = _must(rw, "r1").to_dict()
+    assert a == b
+    assert "allow_promote" not in a
+    assert tt.EpistemicRecord.from_dict(a).to_dict() == a
+
+    # and the two directories hold the same record line, byte for byte
+    assert ro.records_path.read_text(encoding="utf-8") == rw.records_path.read_text(encoding="utf-8")

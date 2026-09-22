@@ -5,6 +5,7 @@
 | Document | Specification for the `truth-types` reference implementation |
 | Implementation | `truth-types` `0.1.0.dev0` (Python 3.10+, standard library only, Apache-2.0) |
 | Status | v0 — specification complete; published as a draft for the first public release |
+| Revision | r2 — adds §4.7 (read-only promote handles) and the `allow_promote` constructor parameter; additive, no rule of Section 3 weakened |
 | Normative core | Sections 2, 3, 4, 5 and 7 specify rules and contracts; Sections 1, 6, 8 and 9 are informative |
 
 **Normative language.** The key words MUST, MUST NOT, REQUIRED, SHALL, SHOULD, SHOULD NOT and MAY
@@ -270,7 +271,9 @@ reasons, but the determinism makes rejection counts stable in a monitoring pipel
 **Fail-closed posture (normative).** Every rejected attempt MUST produce a decision object *and* an
 audit line. There is no bypass flag, no `force` parameter and no silent acceptance path. A caller
 that cannot handle a rejection MUST treat the returned `{ok: False}` / `{allowed: False}` as an
-error condition; ignoring it is not a supported use.
+error condition; ignoring it is not a supported use. A construction-time capability flag that can
+only *refuse more* — `allow_promote=False`, §4.7 — is not a bypass: it removes the ability to
+promote rather than granting a way around the rules.
 
 Two boundaries of the v0 implementation are recorded here because they are observable and are
 candidates for convergence in v1. Both are stated as facts about `0.1.0.dev0`, not as intended
@@ -370,13 +373,16 @@ The property is exercised by the test suite in `tests/test_truth_types.py`:
 | `test_promotion_legal_edges` | both legal edges are accepted |
 | `test_promotion_skip_rejected` / `test_promotion_downgrade_rejected` / `test_promotion_opaque_rejected` / `test_promotion_ai_rejected` | each refusal condition |
 | `test_promote_blocked_recorded` / `test_promote_ai_rejected_and_recorded` | a refused promotion is queryable afterwards via `blocked_promotions()` |
+| `test_readonly_*` (8 tests) | a read-only promote handle (§4.7) refuses and records every promotion attempt whatever the arguments; `add()` / `get()` / `check_on_screen()` and the serialized record are unchanged; a promoting handle over the same directory still promotes |
 | `test_persistence_reload` | types and audit history survive a reload |
 
 ### 4.6 Boundary conditions under which the guarantee does not hold
 
 1. **Untrusted actor declarations.** If model-driven code can call `promote(..., ActorKind.HUMAN)`,
    the guarantee is void. The library is a contract layer, not a sandbox: it makes the honest path
-   the easy path and the dishonest path visible in the audit log, and nothing more.
+   the easy path and the dishonest path visible in the audit log, and nothing more. The compensating
+   deployment measure — removing the *ability* to promote from the process that generates agent
+   output — is specified in §4.7.
 2. **Human-authored root records.** A human actor may create a root record directly at any lattice
    level, including `canonical`, with no promotion history at all. The guarantee constrains *paths*
    from AI output, not authors. The compensating control is rule 6: such a record fails the
@@ -390,6 +396,48 @@ The property is exercised by the test suite in `tests/test_truth_types.py`:
    the same attestation trail but the library does not require two distinct people.
 6. **Retraction is not expressible.** Because downgrading is forbidden and `opaque` is outside the
    lattice, v0 has no way to mark an existing lattice record as withdrawn (Section 9.1).
+
+### 4.7 Read-only promote handles (normative)
+
+4.6.1 concedes that the guarantee rests on an unauthenticated `actor_kind` claim. The reference
+implementation's answer is not to authenticate the actor but to make the *ability* to promote a
+construction-time property of the handle a process holds: a registry can be built that cannot
+promote at all.
+
+- **A capability handle, not an identity check.** `TruthTypeRegistry(log_dir=None,
+  allow_promote=True)`. `allow_promote` is a *capability handle* fixed at construction; it defaults
+  to `True`, so narrowing is opt-in and existing callers are unchanged.
+- **Read-only promote handle.** With `allow_promote=False`, `add()`, `get()`,
+  `check_on_screen()`, `audit_entries()` and `blocked_promotions()` behave exactly as specified in
+  the rest of this document; `promote()` performs no transition for any argument and returns
+  `{ok: False, reason: <the promotion-disabled catalogue message>}`.
+- **The refusal is recorded.** A read-only handle appends the same `action="promote"`, `ok=False`
+  audit line as any other refusal, carrying `handle="read-only"` (7.5). The "every attempt leaves a
+  trace" property therefore holds on every handle, and a read-only handle is never invisible in the
+  log it shares with the review surface.
+- **No existence oracle, no argument dependence.** The capability check is evaluated before every
+  other condition — before the `eid` lookup and before the rules of Section 3 — so a read-only
+  handle answers identically whatever arguments it is given, and the audit line for an unknown
+  `eid` carries no `from_type`.
+- **Fixed at construction.** `allow_promote` is exposed as a read-only property; re-arming a
+  handle by assignment raises `AttributeError`. This guards against accidents, not against a
+  determined caller.
+- **Not a security boundary.** A caller that can construct a handle can construct a promoting one,
+  and `actor_kind` remains a claim (4.6.1). The flag narrows what one handle can attempt; it does
+  not authenticate who is calling (9.1.18).
+
+**Recommended deployment form (SHOULD).** One directory, two handles: an integrator SHOULD hand the
+agent process a read-only promote handle — it may append new records and read the log, and cannot
+raise anything — and construct a promoting registry only inside the human review surface where a
+reviewer's decision is recorded. Every promotion attempt the agent makes is then refused *and*
+written to the same audit log the reviewer reads, so the agent's appetite for promotion becomes
+observable rather than silent. On that deployment the isolation guarantee of 4.1 holds on the path
+that matters: `actor_kind` is still a claim, but the promotion capability is not present in the
+process that makes the claims.
+
+Section 4.5 lists the tests that exercise this section. **Compatibility.** The parameter is
+additive: no name in the 7.1 export list changes, and the default keeps the behaviour of Section 3
+identical for every existing caller (7.8).
 
 ---
 
@@ -611,9 +659,10 @@ Signatures are given as they exist in `0.1.0.dev0`; annotations are part of the 
 | `weakest_link` | `weakest_link(types: Iterable[TruthType]) -> TruthType` | Pure. Returns the lowest-ranked lattice type in `types`. Raises `ValueError` on an empty input or when any input is `opaque`. |
 | `check_promotion` | `check_promotion(current: TruthType, target: TruthType, actor: ActorKind) -> dict` | Pure predicate, fail-closed. Returns `{allowed, reason}`; never raises, never mutates. |
 | `default_log_dir` | `default_log_dir() -> Path` | Resolves the default directory (7.6). Pure w.r.t. the filesystem apart from reading the environment. |
-| `TruthTypeRegistry` | `TruthTypeRegistry(log_dir: Optional[Path] = None)` | Creates the directory if needed and loads existing records. |
+| `TruthTypeRegistry` | `TruthTypeRegistry(log_dir: Optional[Path] = None, allow_promote: bool = True)` | Creates the directory if needed and loads existing records. `allow_promote=False` yields a read-only promote handle (4.7). |
+| `allow_promote` | `allow_promote -> bool` (read-only property) | Whether this handle may promote. Fixed at construction; assignment raises `AttributeError`. |
 | `add` | `add(rec: EpistemicRecord) -> dict` | Applies the creation rules. Returns `{ok: True, reason: "created", record: <dict>}` or `{ok: False, reason: <str>}` with no `record` key. Raises `ValueError` in the `opaque`-parent case (B2). |
-| `promote` | `promote(eid: str, target: TruthType, actor: ActorKind, note: str = "") -> dict` | Applies the promotion rules. Returns `{ok, reason}` in every case, including an unknown `eid`. |
+| `promote` | `promote(eid: str, target: TruthType, actor: ActorKind, note: str = "") -> dict` | Applies the promotion rules. Returns `{ok, reason}` in every case, including an unknown `eid`. On a read-only handle: always `{ok: False, …}` for any argument, always audited (4.7). |
 | `check_on_screen` | `check_on_screen(eid: str) -> dict` | Publication gate (rule 6). Returns `{ok, reason}`; does not mutate. |
 | `get` | `get(eid: str) -> Optional[EpistemicRecord]` | The stored record, or `None`. |
 | `audit_entries` | `audit_entries() -> list[dict]` | Every audit line, in file order. |
@@ -653,9 +702,11 @@ followed by `add` — so the log records both the request and the stored outcome
 | `ok` | boolean | always | Whether the attempt was accepted. |
 | `detail` | string | always | Human-readable explanation. |
 | `from_type` / `to_type` | string | `promote` only | The transition that was attempted. |
+| `handle` | string | a `promote` refusal by a read-only handle | `"read-only"` (4.7); absent on every other line. |
 
 `action`, `eid`, `ok`, `from_type` and `to_type` are language-neutral and stable. `detail` is
-human-readable and is not part of the stable contract (Section 7.8).
+human-readable and is not part of the stable contract (Section 7.8). A read-only handle's refusal
+line carries no `from_type` when the `eid` names no stored record (4.7).
 
 ### 7.6 Log directory resolution
 
@@ -918,6 +969,11 @@ reg.check_on_screen("s:fy25-p42")       # -> {"ok": False, "reason": ...}  (decl
     kept elsewhere; nothing prevents rewriting the file.
 17. **Single-record granularity.** There is no way to express that a *set* of records was reviewed
     together, nor to attach a review act to a document.
+18. **A read-only promote handle is a narrowing, not a control.** `allow_promote=False` (§4.7)
+    removes the promotion path from the handle a caller holds; it does not stop a caller that can
+    construct a registry from constructing a promoting one, and it does not authenticate
+    `actor_kind` (9.1.1). It reduces the accident surface and makes an agent's promotion attempts
+    visible in the log, and nothing more.
 
 ### 9.2 Non-goals
 
