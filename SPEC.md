@@ -3,7 +3,7 @@
 | Field | Value |
 |:--|:--|
 | Document | Specification for the `truth-types` reference implementation |
-| Implementation | `truth-types` `0.1.0.dev0` (Python 3.10+, standard library only, Apache-2.0) |
+| Implementation | `truth-types` `0.1.0` (Python 3.10+, standard library only, Apache-2.0) |
 | Status | v0 — specification complete; published as a draft for the first public release |
 | Revision | r2 — adds §4.7 (read-only promote handles) and the `allow_promote` constructor parameter; additive, no rule of Section 3 weakened |
 | Normative core | Sections 2, 3, 4, 5 and 7 specify rules and contracts; Sections 1, 6, 8 and 9 are informative |
@@ -276,7 +276,7 @@ only *refuse more* — `allow_promote=False`, §4.7 — is not a bypass: it remo
 promote rather than granting a way around the rules.
 
 Two boundaries of the v0 implementation are recorded here because they are observable and are
-candidates for convergence in v1. Both are stated as facts about `0.1.0.dev0`, not as intended
+candidates for convergence in v1. Both are stated as facts about `0.1.0`, not as intended
 behaviour.
 
 - **B1 — an AI record cannot cite a stronger parent.** Coercion (rule 1) is applied *before* the
@@ -505,7 +505,7 @@ Rules (normative when implemented):
 
 ### 5.5 Implementation status (statement of fact)
 
-`source_grade` is **not implemented** in the reference implementation `0.1.0.dev0`:
+`source_grade` is **not implemented** in the reference implementation `0.1.0`:
 `EpistemicRecord` has no such field, and no rule consults a grade. In v0 the carriers of source
 identity are `source_ref` (identity of the artefact) and `note` (free text on the record and on a
 promotion).
@@ -652,7 +652,7 @@ consults them (Section 5.4).
 
 ### 7.3 Callable signatures
 
-Signatures are given as they exist in `0.1.0.dev0`; annotations are part of the documented surface.
+Signatures are given as they exist in `0.1.0`; annotations are part of the documented surface.
 
 | Callable | Signature | Contract |
 |:--|:--|:--|
@@ -931,7 +931,7 @@ reg.check_on_screen("s:fy25-p42")       # -> {"ok": False, "reason": ...}  (decl
 
 ## 9. Boundary conditions and non-goals
 
-### 9.1 Boundary conditions of v0 (all verified against `0.1.0.dev0`)
+### 9.1 Boundary conditions of v0 (all verified against `0.1.0`)
 
 1. **Actor identity is a contract, not a control.** `actor_kind` is supplied by the caller and is
    not authenticated. The isolation property of Section 4 is void if a caller lies. See 4.6.1.
