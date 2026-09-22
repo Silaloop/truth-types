@@ -9,10 +9,10 @@ body:
 
         1. **A rule belongs here only if it can be enforced in code** and fail a call. A convention
            that cannot fail is a checklist item for your pipeline, not a library feature.
-        2. **The compatibility promise is binding** ([SPEC §7.8](https://github.com/Jackxuzhenjie/truth-types/blob/main/SPEC.md)):
+        2. **The compatibility promise is binding** ([SPEC §7.8](https://github.com/Silaloop/truth-types/blob/main/SPEC.md)):
            the exported names and the four truth-type strings are the wire format of the records and
            audit files. Additions that widen the surface should start as a discussion against the
-           specification — [SPEC.md](https://github.com/Jackxuzhenjie/truth-types/blob/main/SPEC.md)
+           specification — [SPEC.md](https://github.com/Silaloop/truth-types/blob/main/SPEC.md)
            is normative and is amended before the code.
 
   - type: dropdown

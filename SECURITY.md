@@ -15,8 +15,9 @@ on `main` and released as a new `0.x` version; there are no back-ports to earlie
 **Please do not open a public issue.** Use GitHub's private vulnerability reporting:
 
 1. Go to the repository's **Security** tab → **Report a vulnerability**
-   (<https://github.com/Jackxuzhenjie/truth-types/security/advisories/new>), or
-2. If that form is unavailable to you, open a minimal public issue that says only *"I would like to
+   (<https://github.com/Silaloop/truth-types/security/advisories/new>), or email
+   **jack@silaloop.com** with "SECURITY" in the subject line, or
+2. If those channels are unavailable to you, open a minimal public issue that says only *"I would like to
    report a security issue privately"* — with no details — and a maintainer will open a private
    channel for the report.
 

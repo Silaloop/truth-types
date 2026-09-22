@@ -8,7 +8,7 @@ body:
         Thanks for the report. Two notes before you start:
 
         - **Security issues** (rule bypasses, audit forgery, unsafe path handling) do **not** belong
-          here — see [SECURITY.md](https://github.com/Jackxuzhenjie/truth-types/blob/main/SECURITY.md).
+          here — see [SECURITY.md](https://github.com/Silaloop/truth-types/blob/main/SECURITY.md).
         - `reason` / `detail` **message text is not part of the compatibility contract**: branch on
           the structured fields (`ok`, `allowed`, `action`, `from_type`, `to_type`). A wrong *wording*
           is a documentation bug; a wrong *structured field* is a bug bug.

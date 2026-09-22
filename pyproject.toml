@@ -41,11 +41,11 @@ dev = ["pytest>=7.0", "pyright>=1.1.350"]
 release = ["build>=1.2", "twine>=5.0"]
 
 [project.urls]
-Homepage = "https://github.com/Jackxuzhenjie/truth-types"
-Repository = "https://github.com/Jackxuzhenjie/truth-types"
-Issues = "https://github.com/Jackxuzhenjie/truth-types/issues"
-Changelog = "https://github.com/Jackxuzhenjie/truth-types/blob/main/CHANGELOG.md"
-Specification = "https://github.com/Jackxuzhenjie/truth-types/blob/main/SPEC.md"
+Homepage = "https://github.com/Silaloop/truth-types"
+Repository = "https://github.com/Silaloop/truth-types"
+Issues = "https://github.com/Silaloop/truth-types/issues"
+Changelog = "https://github.com/Silaloop/truth-types/blob/main/CHANGELOG.md"
+Specification = "https://github.com/Silaloop/truth-types/blob/main/SPEC.md"
 
 [tool.setuptools]
 packages = ["truth_types"]

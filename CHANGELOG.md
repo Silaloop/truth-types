@@ -88,5 +88,5 @@ only, offline, no service to run.
   resolution; files grow without bound. The full list is in the README and in SPEC §4.6, §4.7 and
   §9.1.
 
-[Unreleased]: https://github.com/Jackxuzhenjie/truth-types/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/Jackxuzhenjie/truth-types/releases/tag/v0.1.0
+[Unreleased]: https://github.com/Silaloop/truth-types/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/Silaloop/truth-types/releases/tag/v0.1.0

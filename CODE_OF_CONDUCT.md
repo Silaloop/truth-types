@@ -60,7 +60,7 @@ representative at an online or offline event.
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
 reported to the community leaders responsible for enforcement at
-the maintainer's GitHub account, @Jackxuzhenjie (a private report via the repository's Security tab is welcome).
+jack@silaloop.com, or the maintainer's GitHub account @Silaloop (a private report via the repository's Security tab is welcome).
 All complaints will be reviewed and investigated promptly and fairly.
 
 All community leaders are obligated to respect the privacy and security of the

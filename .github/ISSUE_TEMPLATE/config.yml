@@ -1,11 +1,11 @@
 blank_issues_enabled: true
 contact_links:
   - name: Specification (SPEC.md) — normative
-    url: https://github.com/Jackxuzhenjie/truth-types/blob/main/SPEC.md
+    url: https://github.com/Silaloop/truth-types/blob/main/SPEC.md
     about: The six rules, the isolation guarantee, the compatibility contract, and every known limitation of v0 live here.
   - name: Report a security issue privately
-    url: https://github.com/Jackxuzhenjie/truth-types/security/advisories/new
+    url: https://github.com/Silaloop/truth-types/security/advisories/new
     about: Rule bypasses, audit-log forgery or unsafe path handling — please do not open a public issue.
   - name: Design questions and spec discussions
-    url: https://github.com/Jackxuzhenjie/truth-types/discussions
+    url: https://github.com/Silaloop/truth-types/discussions
     about: Additions that widen the public surface start as a discussion against the spec, not as a pull request.

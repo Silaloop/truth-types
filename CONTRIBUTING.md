@@ -25,7 +25,7 @@ Python 3.10+ (the CI matrix runs 3.10 â€“ 3.13). No runtime dependencies, ever â
 standard library only.
 
 ```bash
-git clone https://github.com/Jackxuzhenjie/truth-types
+git clone https://github.com/Silaloop/truth-types
 cd truth-types
 python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"        # pytest + pyright + build/twine
